@@ -9,6 +9,7 @@ from bson import ObjectId
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+import logging
 
 
 DB_PASSWORD = getenv("DB_PASSWORD")
@@ -37,11 +38,13 @@ ALLOWED_IPS = getenv("ALLOWED_IPS", "").split(",")
 @app.middleware("http")
 async def restrict_ip(request: Request, call_next):
     user_ip = request.client.host
+    logging.info(f"🔍 Żądanie z IP: {user_ip}")
 
     if request.method == "OPTIONS":
         return await call_next(request)
 
     if user_ip not in ALLOWED_IPS:
+        logging.warning(f"🚫 Blokada IP: {user_ip} nie jest na liście")
         return JSONResponse(status_code=403, content={"detail": "Forbidden: IP not allowed"})
 
     return await call_next(request)
@@ -57,7 +60,7 @@ class Task(BaseModel):
 
 def verify_code(request: Request):
     user_code = request.headers.get("Authorization")
-    print(f"Received code: {user_code}")
+    logging.info(f"Received code: {user_code}")
     if user_code != SECRET_CODE:
         raise HTTPException(status_code=403, detail="Unauthorized")
 
