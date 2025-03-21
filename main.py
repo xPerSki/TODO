@@ -8,7 +8,6 @@ from os import getenv
 from bson import ObjectId
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 import logging
 
 
@@ -31,6 +30,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+templates = Jinja2Templates(directory="templates")
 
 
 class Task(BaseModel):
