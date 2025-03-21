@@ -37,8 +37,13 @@ ALLOWED_IPS = getenv("ALLOWED_IPS", "").split(",")
 @app.middleware("http")
 async def restrict_ip(request: Request, call_next):
     user_ip = request.client.host
+
+    if request.method == "OPTIONS":
+        return await call_next(request)
+
     if user_ip not in ALLOWED_IPS:
         return JSONResponse(status_code=403, content={"detail": "Forbidden: IP not allowed"})
+
     return await call_next(request)
 
 templates = Jinja2Templates(directory="templates")
