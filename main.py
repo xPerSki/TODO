@@ -8,6 +8,7 @@ from os import getenv
 from bson import ObjectId
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 
 DB_PASSWORD = getenv("DB_PASSWORD")
@@ -37,7 +38,7 @@ ALLOWED_IPS = getenv("ALLOWED_IPS", "").split(",")
 async def restrict_ip(request: Request, call_next):
     user_ip = request.client.host
     if user_ip not in ALLOWED_IPS:
-        return HTTPException(status_code=403, detail="Forbidden: IP not allowed")
+        return JSONResponse(status_code=403, content={"detail": "Forbidden: IP not allowed"})
     return await call_next(request)
 
 templates = Jinja2Templates(directory="templates")
