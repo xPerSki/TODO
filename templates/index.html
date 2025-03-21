@@ -6,6 +6,25 @@
     <title>TODO List</title>
     <link rel="stylesheet" href="https://xperski.github.io/TODO/static/css/bootstrap.min.css">
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        .list-group-item {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .task-content {
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            max-width: 100%;
+        }
+
+        .task-buttons {
+            display: flex;
+            gap: 8px;
+        }
+    </style>
 </head>
 <body class="container mt-5">
 <div class="card shadow-lg p-4">
@@ -16,7 +35,9 @@
     <form id="task-form" class="mt-3">
         <input type="text" id="title" class="form-control mb-2" placeholder="Title" required>
         <textarea id="description" class="form-control mb-2" placeholder="Description" rows="4"></textarea>
-        <button type="submit" class="btn btn-success">Add</button>
+        <div class="text-end">
+            <button type="submit" class="btn btn-success">Add</button>
+        </div>
     </form>
 
     <h2 class="mt-4 text-center">Tasks:</h2>
@@ -33,14 +54,13 @@
         list.innerHTML = "";
         tasks.forEach((task, index) => {
             const li = document.createElement("li");
-            li.className = `list-group-item d-flex justify-content-between align-items-center ${
-                index % 2 === 0 ? 'bg-light' : ''
-            }`;
-            li.innerHTML = `<div>
+            li.className = `list-group-item ${index % 2 === 0 ? 'bg-light' : ''}`;
+            li.innerHTML = `
+                <div class="task-content">
                     <strong class="${task.completed ? 'text-decoration-line-through' : ''}">${task.title}</strong>
                     <p class="mb-0 ${task.completed ? 'text-decoration-line-through' : ''}">${marked.parse(task.description)}</p>
                 </div>
-                <div>
+                <div class="task-buttons">
                     <button class="btn ${task.completed ? 'btn-success' : 'btn-danger'} btn-sm" onclick="toggleTask('${task._id}', ${task.completed})">
                         ${task.completed ? 'Incomplete' : 'Complete'}
                     </button>
@@ -51,15 +71,13 @@
     }
 
     async function deleteTask(id) {
-        await fetch(`${API_BASE}/tasks/${id}`, {method: "DELETE"});
+        await fetch(`${API_BASE}/tasks/${id}`, { method: "DELETE" });
         showAlert("Task deleted successfully!", "danger");
         loadTasks();
     }
 
     async function toggleTask(id, completed) {
-        await fetch(`${API_BASE}/tasks/${id}/toggle`, {
-            method: "PUT"
-        });
+        await fetch(`${API_BASE}/tasks/${id}/toggle`, { method: "PUT" });
         showAlert(!completed ? "Task marked as incomplete!" : "Task marked as completed!", !completed ? "danger" : "success");
         loadTasks();
     }
@@ -73,8 +91,8 @@
 
         await fetch(`${API_BASE}/tasks`, {
             method: "POST",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({title, description, completed: false})
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ title, description, completed: false })
         });
 
         showAlert("Task added successfully!", "success");
