@@ -123,7 +123,7 @@
             method: "PUT",
             headers: { "Authorization": userCode }
         });
-        showAlert(!completed ? "Task marked as incomplete!" : "Task marked as completed!", !completed ? "danger" : "success");
+        showAlert(!completed ? "Task marked as completed!" : "Task marked as incomplete!" , !completed ? "success" : "danger");
         loadTasks();
     }
 
