@@ -50,7 +50,6 @@ security = HTTPBasic()
 async def login(credentials: HTTPBasicCredentials = Depends(security)):
     user = db.users.find_one({"username": credentials.username, "password": credentials.password})
     if user:
-        # Generujemy unikalny token sesji
         session_token = secrets.token_hex(16)
         active_sessions[session_token] = credentials.username
         return {"token": session_token}
@@ -59,7 +58,6 @@ async def login(credentials: HTTPBasicCredentials = Depends(security)):
 
 @app.get("/tasks")
 async def get_tasks(request: Request):
-    # Sprawdzenie tokena w nagłówku
     token = request.headers.get("Authorization")
     if not token or token not in active_sessions:
         raise HTTPException(status_code=403, detail="Brak dostępu")

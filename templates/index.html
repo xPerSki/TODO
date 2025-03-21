@@ -42,8 +42,8 @@
     const API_BASE = "https://todo-o9ev.onrender.com";
 
     async function login() {
-        let username = prompt("Podaj login:");
-        let password = prompt("Podaj hasło:");
+        let username = prompt("Login:");
+        let password = prompt("Password:");
 
         let response = await fetch(`${API_BASE}/login`, {
             method: "POST",
@@ -54,10 +54,10 @@
         if (response.ok) {
             let data = await response.json();
             sessionStorage.setItem("token", data.token);
-            alert("Zalogowano!");
+            alert("Logged in!");
             loadTasks();
         } else {
-            alert("Błędne dane logowania! Spróbuj ponownie.");
+            alert("Wrong credenials");
             sessionStorage.removeItem("token");
             login();
         }
