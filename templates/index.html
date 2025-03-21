@@ -13,13 +13,11 @@
             gap: 10px;
             align-items: center;
         }
-
         .task-content {
             word-wrap: break-word;
             overflow-wrap: break-word;
             max-width: 100%;
         }
-
         .task-buttons {
             display: flex;
             gap: 8px;
@@ -29,9 +27,7 @@
 <body class="container mt-5">
 <div class="card shadow-lg p-4">
     <h1 class="text-center text-primary fw-bold">TODO</h1>
-
     <div id="alert-container"></div>
-
     <form id="task-form" class="mt-3">
         <input type="text" id="title" class="form-control mb-2" placeholder="Title" required>
         <textarea id="description" class="form-control mb-2" placeholder="Description" rows="4"></textarea>
@@ -39,11 +35,9 @@
             <button type="submit" class="btn btn-success">Add</button>
         </div>
     </form>
-
     <h2 class="mt-4 text-center">Tasks:</h2>
     <ul id="task-list" class="list-group mt-3"></ul>
 </div>
-
 <script>
     const API_BASE = "https://todo-o9ev.onrender.com";
 
@@ -53,10 +47,8 @@
 
         let response = await fetch(`${API_BASE}/login`, {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": "Basic " + btoa(username + ":" + password)
-            }
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({username, password})
         });
 
         if (response.ok) {
@@ -65,7 +57,9 @@
             alert("Zalogowano!");
             loadTasks();
         } else {
-            alert("Błędne dane logowania!");
+            alert("Błędne dane logowania! Spróbuj ponownie.");
+            sessionStorage.removeItem("token");
+            login();
         }
     }
 
@@ -75,61 +69,65 @@
             login();
             return;
         }
-
         let response = await fetch(`${API_BASE}/tasks`, {
-            headers: {
-                "Authorization": token
-            }
+            headers: {"Authorization": token}
         });
 
         if (response.ok) {
             let tasks = await response.json();
-            console.log("Zadania:", tasks);
+            const list = document.getElementById("task-list");
+            list.innerHTML = "";
+            tasks.forEach((task, index) => {
+                const li = document.createElement("li");
+                li.className = `list-group-item ${index % 2 === 0 ? 'bg-light' : ''}`;
+                li.innerHTML = `
+                    <div class="task-content">
+                        <strong class="${task.completed ? 'text-decoration-line-through' : ''}">${task.title}</strong>
+                        <p class="mb-0 ${task.completed ? 'text-decoration-line-through' : ''}">${marked.parse(task.description)}</p>
+                    </div>
+                    <div class="task-buttons">
+                        <button class="btn ${task.completed ? 'btn-success' : 'btn-danger'} btn-sm" onclick="toggleTask('${task._id}', ${task.completed})">
+                            ${task.completed ? 'Incomplete' : 'Complete'}
+                        </button>
+                        <button class="btn btn-danger btn-sm ms-2" onclick="deleteTask('${task._id}')">Delete</button>
+                    </div>`;
+                list.appendChild(li);
+            });
         } else {
             alert("Brak dostępu!");
+            sessionStorage.removeItem("token");
+            login();
         }
     }
 
-    login();
-
-
-    async function loadTasks() {
-        const response = await fetch(`${API_BASE}/tasks`);
-        const tasks = await response.json();
-        const list = document.getElementById("task-list");
-        list.innerHTML = "";
-        tasks.forEach((task, index) => {
-            const li = document.createElement("li");
-            li.className = `list-group-item ${index % 2 === 0 ? 'bg-light' : ''}`;
-            li.innerHTML = `
-                <div class="task-content">
-                    <strong class="${task.completed ? 'text-decoration-line-through' : ''}">${task.title}</strong>
-                    <p class="mb-0 ${task.completed ? 'text-decoration-line-through' : ''}">${marked.parse(task.description)}</p>
-                </div>
-                <div class="task-buttons">
-                    <button class="btn ${task.completed ? 'btn-success' : 'btn-danger'} btn-sm" onclick="toggleTask('${task._id}', ${task.completed})">
-                        ${task.completed ? 'Incomplete' : 'Complete'}
-                    </button>
-                    <button class="btn btn-danger btn-sm ms-2" onclick="deleteTask('${task._id}')">Delete</button>
-                </div>`;
-            list.appendChild(li);
-        });
-    }
-
     async function deleteTask(id) {
-        await fetch(`${API_BASE}/tasks/${id}`, {method: "DELETE"});
+        let token = sessionStorage.getItem("token");
+        await fetch(`${API_BASE}/tasks/${id}`, {
+            method: "DELETE",
+            headers: {"Authorization": token}
+        });
         showAlert("Task deleted successfully!", "danger");
         loadTasks();
     }
 
     async function toggleTask(id, completed) {
-        await fetch(`${API_BASE}/tasks/${id}/toggle`, {method: "PUT"});
+        let token = sessionStorage.getItem("token");
+        await fetch(`${API_BASE}/tasks/${id}/toggle`, {
+            method: "PUT",
+            headers: {"Authorization": token}
+        });
         showAlert(!completed ? "Task marked as incomplete!" : "Task marked as completed!", !completed ? "danger" : "success");
         loadTasks();
     }
 
     document.getElementById("task-form").addEventListener("submit", async (e) => {
         e.preventDefault();
+        let token = sessionStorage.getItem("token");
+        if (!token) {
+            alert("Nie jesteś zalogowany!");
+            login();
+            return;
+        }
         const titleInput = document.getElementById("title");
         const descriptionInput = document.getElementById("description");
         const title = titleInput.value;
@@ -137,7 +135,10 @@
 
         await fetch(`${API_BASE}/tasks`, {
             method: "POST",
-            headers: {"Content-Type": "application/json"},
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": token
+            },
             body: JSON.stringify({title, description, completed: false})
         });
 
@@ -158,7 +159,7 @@
         }, 3000);
     }
 
-    loadTasks();
+    login();
 </script>
 </body>
 </html>
