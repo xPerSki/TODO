@@ -41,80 +41,87 @@
 <script>
     const API_BASE = "https://todo-o9ev.onrender.com";
 
-    async function login() {
-        let username = prompt("Login:");
-        let password = prompt("Password:");
+    async function enterCode() {
+        let userCode = prompt("Enter access code:");
+        if (!userCode) {
+            alert("Access code is required!");
+            enterCode();
+            return;
+        }
 
-        let response = await fetch(`${API_BASE}/login`, {
+        let response = await fetch(`${API_BASE}/verify-code`, {
             method: "POST",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({username, password})
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ code: userCode })
         });
 
         if (response.ok) {
-            let data = await response.json();
-            sessionStorage.setItem("token", data.token);
-            alert("Logged in!");
+            sessionStorage.setItem("code", userCode);
+            alert("Access granted!");
             loadTasks();
         } else {
-            alert("Wrong credenials");
-            sessionStorage.removeItem("token");
-            login();
+            alert("Invalid code! Try again.");
+            enterCode();
         }
     }
 
     async function loadTasks() {
-        let token = sessionStorage.getItem("token");
-        if (!token) {
-            login();
+        let userCode = sessionStorage.getItem("code");
+        if (!userCode) {
+            enterCode();
             return;
         }
+
         let response = await fetch(`${API_BASE}/tasks`, {
-            headers: {"Authorization": token}
+            headers: { "Authorization": userCode }
         });
 
         if (response.ok) {
             let tasks = await response.json();
-            const list = document.getElementById("task-list");
-            list.innerHTML = "";
-            tasks.forEach((task, index) => {
-                const li = document.createElement("li");
-                li.className = `list-group-item ${index % 2 === 0 ? 'bg-light' : ''}`;
-                li.innerHTML = `
-                    <div class="task-content">
-                        <strong class="${task.completed ? 'text-decoration-line-through' : ''}">${task.title}</strong>
-                        <p class="mb-0 ${task.completed ? 'text-decoration-line-through' : ''}">${marked.parse(task.description)}</p>
-                    </div>
-                    <div class="task-buttons">
-                        <button class="btn ${task.completed ? 'btn-success' : 'btn-danger'} btn-sm" onclick="toggleTask('${task._id}', ${task.completed})">
-                            ${task.completed ? 'Incomplete' : 'Complete'}
-                        </button>
-                        <button class="btn btn-danger btn-sm ms-2" onclick="deleteTask('${task._id}')">Delete</button>
-                    </div>`;
-                list.appendChild(li);
-            });
+            renderTasks(tasks);
         } else {
-            alert("No permission");
-            sessionStorage.removeItem("token");
-            login();
+            alert("Unauthorized! Enter code again.");
+            sessionStorage.removeItem("code");
+            enterCode();
         }
     }
 
+    function renderTasks(tasks) {
+        const list = document.getElementById("task-list");
+        list.innerHTML = "";
+        tasks.forEach((task, index) => {
+            const li = document.createElement("li");
+            li.className = `list-group-item ${index % 2 === 0 ? 'bg-light' : ''}`;
+            li.innerHTML = `
+                <div class="task-content">
+                    <strong class="${task.completed ? 'text-decoration-line-through' : ''}">${task.title}</strong>
+                    <p class="mb-0 ${task.completed ? 'text-decoration-line-through' : ''}">${marked.parse(task.description)}</p>
+                </div>
+                <div class="task-buttons">
+                    <button class="btn ${task.completed ? 'btn-success' : 'btn-danger'} btn-sm" onclick="toggleTask('${task._id}', ${task.completed})">
+                        ${task.completed ? 'Incomplete' : 'Complete'}
+                    </button>
+                    <button class="btn btn-danger btn-sm ms-2" onclick="deleteTask('${task._id}')">Delete</button>
+                </div>`;
+            list.appendChild(li);
+        });
+    }
+
     async function deleteTask(id) {
-        let token = sessionStorage.getItem("token");
+        let userCode = sessionStorage.getItem("code");
         await fetch(`${API_BASE}/tasks/${id}`, {
             method: "DELETE",
-            headers: {"Authorization": token}
+            headers: { "Authorization": userCode }
         });
         showAlert("Task deleted successfully!", "danger");
         loadTasks();
     }
 
     async function toggleTask(id, completed) {
-        let token = sessionStorage.getItem("token");
+        let userCode = sessionStorage.getItem("code");
         await fetch(`${API_BASE}/tasks/${id}/toggle`, {
             method: "PUT",
-            headers: {"Authorization": token}
+            headers: { "Authorization": userCode }
         });
         showAlert(!completed ? "Task marked as incomplete!" : "Task marked as completed!", !completed ? "danger" : "success");
         loadTasks();
@@ -122,12 +129,7 @@
 
     document.getElementById("task-form").addEventListener("submit", async (e) => {
         e.preventDefault();
-        let token = sessionStorage.getItem("token");
-        if (!token) {
-            alert("You are not logged in!");
-            login();
-            return;
-        }
+        let userCode = sessionStorage.getItem("code");
         const titleInput = document.getElementById("title");
         const descriptionInput = document.getElementById("description");
         const title = titleInput.value;
@@ -137,9 +139,9 @@
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                "Authorization": token
+                "Authorization": userCode
             },
-            body: JSON.stringify({title, description, completed: false})
+            body: JSON.stringify({ title, description, completed: false })
         });
 
         showAlert("Task added successfully!", "success");
@@ -159,7 +161,7 @@
         }, 3000);
     }
 
-    login();
+    enterCode();
 </script>
 </body>
 </html>

@@ -1,5 +1,5 @@
 import uvicorn
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import FastAPI, Request, HTTPException, Depends
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
@@ -8,17 +8,17 @@ from os import getenv
 from bson import ObjectId
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi import Depends
-from fastapi.security import HTTPBasic, HTTPBasicCredentials
-import secrets
 
 
 DB_PASSWORD = getenv("DB_PASSWORD")
-uri = f"mongodb+srv://persky:{DB_PASSWORD}@cluster0.jevvu.mongodb.net/?appName=Cluster0"
+SECRET_CODE = getenv("KOD", "default")
 
+
+uri = f"mongodb+srv://persky:{DB_PASSWORD}@cluster0.jevvu.mongodb.net/?appName=Cluster0"
 client = MongoClient(uri)
 db = client["todo_db"]
 collection = db["tasks"]
+
 
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -38,30 +38,26 @@ class Task(BaseModel):
     completed: bool = False
 
 
+def verify_code(request: Request):
+    user_code = request.headers.get("Authorization")
+    if user_code != SECRET_CODE:
+        raise HTTPException(status_code=403, detail="Unauthorized")
+
+
 @app.get("/", response_class=HTMLResponse)
 async def serve_home(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
-active_sessions = {}
-security = HTTPBasic()
 
-
-@app.post("/login")
-async def login(credentials: HTTPBasicCredentials = Depends(security)):
-    user = db.users.find_one({"username": credentials.username, "password": credentials.password})
-    if user:
-        session_token = secrets.token_hex(16)
-        active_sessions[session_token] = credentials.username
-        return {"token": session_token}
-    raise HTTPException(status_code=401, detail="Niepoprawne dane logowania")
+@app.post("/verify-code")
+async def verify_code_api(data: dict):
+    if "code" not in data or data["code"] != SECRET_CODE:
+        raise HTTPException(status_code=401, detail="Invalid code")
+    return {"message": "Access granted"}
 
 
 @app.get("/tasks")
-async def get_tasks(request: Request):
-    token = request.headers.get("Authorization")
-    if not token or token not in active_sessions:
-        raise HTTPException(status_code=403, detail="Brak dostępu")
-
+async def get_tasks(request: Request, authorized: bool = Depends(verify_code)):
     tasks = list(collection.find({}, {"_id": 1, "title": 1, "description": 1, "completed": 1}))
     for task in tasks:
         task["_id"] = str(task["_id"])
@@ -69,14 +65,14 @@ async def get_tasks(request: Request):
 
 
 @app.post("/tasks")
-async def create_task(task: Task):
+async def create_task(request: Request, task: Task, authorized: bool = Depends(verify_code)):
     new_task = task.model_dump()
     result = collection.insert_one(new_task)
     return {"id": str(result.inserted_id), "message": "Task added"}
 
 
 @app.delete("/tasks/{task_id}")
-async def delete_task(task_id: str):
+async def delete_task(request: Request, task_id: str, authorized: bool = Depends(verify_code)):
     result = collection.delete_one({"_id": ObjectId(task_id)})
     if result.deleted_count == 1:
         return {"message": "Task deleted"}
@@ -84,7 +80,7 @@ async def delete_task(task_id: str):
 
 
 @app.get("/tasks/{task_id}")
-async def get_task(task_id: str):
+async def get_task(request: Request, task_id: str, authorized: bool = Depends(verify_code)):
     task = collection.find_one({"_id": ObjectId(task_id)})
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
@@ -93,7 +89,7 @@ async def get_task(task_id: str):
 
 
 @app.put("/tasks/{task_id}")
-async def update_task(task_id: str, task: Task):
+async def update_task(request: Request, task_id: str, task: Task, authorized: bool = Depends(verify_code)):
     updated_task = task.model_dump()
     result = collection.update_one({"_id": ObjectId(task_id)}, {"$set": updated_task})
     if result.matched_count == 1:
@@ -102,7 +98,7 @@ async def update_task(task_id: str, task: Task):
 
 
 @app.put("/tasks/{task_id}/toggle")
-async def toggle_task(task_id: str):
+async def toggle_task(request: Request, task_id: str, authorized: bool = Depends(verify_code)):
     task = collection.find_one({"_id": ObjectId(task_id)})
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
