@@ -40,6 +40,7 @@ class Task(BaseModel):
 
 def verify_code(request: Request):
     user_code = request.headers.get("Authorization")
+    print(f"Received code: {user_code}")
     if user_code != SECRET_CODE:
         raise HTTPException(status_code=403, detail="Unauthorized")
 
