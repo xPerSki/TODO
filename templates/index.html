@@ -47,6 +47,52 @@
 <script>
     const API_BASE = "https://todo-o9ev.onrender.com";
 
+    async function login() {
+        let username = prompt("Podaj login:");
+        let password = prompt("Podaj hasło:");
+
+        let response = await fetch(`${API_BASE}/login`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": "Basic " + btoa(username + ":" + password)
+            }
+        });
+
+        if (response.ok) {
+            let data = await response.json();
+            sessionStorage.setItem("token", data.token);
+            alert("Zalogowano!");
+            loadTasks();
+        } else {
+            alert("Błędne dane logowania!");
+        }
+    }
+
+    async function loadTasks() {
+        let token = sessionStorage.getItem("token");
+        if (!token) {
+            login();
+            return;
+        }
+
+        let response = await fetch(`${API_BASE}/tasks`, {
+            headers: {
+                "Authorization": token
+            }
+        });
+
+        if (response.ok) {
+            let tasks = await response.json();
+            console.log("Zadania:", tasks);
+        } else {
+            alert("Brak dostępu!");
+        }
+    }
+
+    login();
+
+
     async function loadTasks() {
         const response = await fetch(`${API_BASE}/tasks`);
         const tasks = await response.json();
@@ -71,13 +117,13 @@
     }
 
     async function deleteTask(id) {
-        await fetch(`${API_BASE}/tasks/${id}`, { method: "DELETE" });
+        await fetch(`${API_BASE}/tasks/${id}`, {method: "DELETE"});
         showAlert("Task deleted successfully!", "danger");
         loadTasks();
     }
 
     async function toggleTask(id, completed) {
-        await fetch(`${API_BASE}/tasks/${id}/toggle`, { method: "PUT" });
+        await fetch(`${API_BASE}/tasks/${id}/toggle`, {method: "PUT"});
         showAlert(!completed ? "Task marked as incomplete!" : "Task marked as completed!", !completed ? "danger" : "success");
         loadTasks();
     }
@@ -91,8 +137,8 @@
 
         await fetch(`${API_BASE}/tasks`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ title, description, completed: false })
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({title, description, completed: false})
         });
 
         showAlert("Task added successfully!", "success");

@@ -8,6 +8,9 @@ from os import getenv
 from bson import ObjectId
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi import Depends
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
+import secrets
 
 
 DB_PASSWORD = getenv("DB_PASSWORD")
@@ -39,9 +42,28 @@ class Task(BaseModel):
 async def serve_home(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
+active_sessions = {}
+security = HTTPBasic()
+
+
+@app.post("/login")
+async def login(credentials: HTTPBasicCredentials = Depends(security)):
+    user = db.users.find_one({"username": credentials.username, "password": credentials.password})
+    if user:
+        # Generujemy unikalny token sesji
+        session_token = secrets.token_hex(16)
+        active_sessions[session_token] = credentials.username
+        return {"token": session_token}
+    raise HTTPException(status_code=401, detail="Niepoprawne dane logowania")
+
 
 @app.get("/tasks")
-async def get_tasks():
+async def get_tasks(request: Request):
+    # Sprawdzenie tokena w nagłówku
+    token = request.headers.get("Authorization")
+    if not token or token not in active_sessions:
+        raise HTTPException(status_code=403, detail="Brak dostępu")
+
     tasks = list(collection.find({}, {"_id": 1, "title": 1, "description": 1, "completed": 1}))
     for task in tasks:
         task["_id"] = str(task["_id"])
