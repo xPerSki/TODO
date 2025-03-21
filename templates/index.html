@@ -94,7 +94,7 @@
                 list.appendChild(li);
             });
         } else {
-            alert("Brak dostępu!");
+            alert("No permission");
             sessionStorage.removeItem("token");
             login();
         }
@@ -124,7 +124,7 @@
         e.preventDefault();
         let token = sessionStorage.getItem("token");
         if (!token) {
-            alert("Nie jesteś zalogowany!");
+            alert("You are not logged in!");
             login();
             return;
         }
