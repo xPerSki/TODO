@@ -41,7 +41,6 @@ class Task(BaseModel):
 
 def verify_code(request: Request):
     user_code = request.headers.get("Authorization")
-    logging.warning(f"Received code: {user_code}")
     if user_code != SECRET_CODE:
         raise HTTPException(status_code=403, detail="Unauthorized")
 
@@ -54,6 +53,7 @@ async def serve_home(request: Request):
 @app.post("/verify-code")
 async def verify_code_api(data: dict):
     if "code" not in data or data["code"] != SECRET_CODE:
+        logging.warning(f"Received code: {data['code']}")
         raise HTTPException(status_code=401, detail="Invalid code")
     return {"message": "Access granted"}
 
